@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="p-6 bg-gray-100">
+
+<script>
+if (localStorage.getItem("role") !== "admin") {
+  alert("Access denied");
+  location.href = "index.html";
+}
+</script>
+
+<h1 class="text-2xl font-bold mb-4">Admin Dashboard</h1>
+
+<button onclick="logout()" class="mb-4 bg-black text-white px-4 py-2 rounded">
+Logout
+</button>
+
+<div class="bg-white p-4 rounded-xl mb-6">
+  <h2 class="font-bold mb-3">Add Restaurant</h2>
+  <input id="name" placeholder="Name" class="border p-2 w-full mb-2">
+  <input id="price" placeholder="Price" class="border p-2 w-full mb-2">
+  <input id="img" placeholder="Image URL (.jpg/.png)" class="border p-2 w-full mb-2">
+  <select id="type" class="border p-2 w-full mb-2">
+    <option value="veg">Veg</option>
+    <option value="non-veg">Non-Veg</option>
+  </select>
+  <button onclick="addRestaurant()" class="bg-green-500 text-white px-4 py-2 rounded">
+Add
+</button>
+</div>
+
+<div class="bg-white p-4 rounded-xl mb-6">
+  <h2 class="font-bold mb-3">Menu Editor</h2>
+  <select id="resSel" class="border p-2 w-full mb-2"></select>
+  <input id="mname" placeholder="Item name" class="border p-2 w-full mb-2">
+  <input id="mprice" placeholder="Item price" class="border p-2 w-full mb-2">
+  <button onclick="addMenu()" class="bg-purple-600 text-white px-4 py-2 rounded">
+Add Item
+</button>
+</div>
+
+<div id="list" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+
+<script>
+let data = JSON.parse(localStorage.getItem("restaurants")) || [];
+
+function validImg(url) {
+  return /\.(jpg|jpeg|png|webp)$/i.test(url);
+}
+
+function addRestaurant() {
+  if (!validImg(img.value)) return alert("Invalid image URL");
+  data.push({
+    name: name.value,
+    price: Number(price.value),
+    img: img.value,
+    type: type.value,
+    menu: []
+  });
+  save();
+}
+
+function addMenu() {
+  data[resSel.value].menu.push({
+    name: mname.value,
+    price: Number(mprice.value)
+  });
+  save();
+}
+
+function remove(i) {
+  data.splice(i, 1);
+  save();
+}
+
+function save() {
+  localStorage.setItem("restaurants", JSON.stringify(data));
+  render();
+}
+
+function render() {
+  list.innerHTML = data.map((r, i) => `
+    <div class="bg-white p-3 rounded shadow">
+      <img src="${r.img}" class="h-32 w-full object-cover rounded mb-2">
+      <h3 class="font-bold">${r.name}</h3>
+      <button onclick="remove(${i})"
+        class="text-red-500 font-bold mt-2">Delete</button>
+    </div>
+  `).join("");
+
+  resSel.innerHTML = data.map((r, i) =>
+    `<option value="${i}">${r.name}</option>`
+  ).join("");
+}
+
+function logout() {
+  localStorage.removeItem("role");
+  location.href = "index.html";
+}
+
+render();
+</script>
+
+</body>
+</html>

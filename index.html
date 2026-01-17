@@ -3,93 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Share My Location</title>
+    <title>Rapido Clone MVP</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
     <style>
-        body { font-family: -apple-system, system-ui, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: #f4f4f9; }
+        :root { --primary: #ffdd00; --dark: #222; --blue: #2563eb; }
+        body { font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
         #map { flex-grow: 1; width: 100%; }
-        .controls { padding: 20px; background: white; border-radius: 20px 20px 0 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); text-align: center; }
-        button { 
-            background: #2563eb; color: white; border: none; padding: 15px 30px; 
-            font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; width: 100%;
+        
+        .controls { 
+            padding: 20px; background: white; border-radius: 20px 20px 0 0; 
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.1); position: relative; z-index: 1000;
         }
-        button:disabled { background: #ccc; }
-        #status { margin-bottom: 10px; font-size: 14px; color: #666; }
+        
+        input { 
+            width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; 
+            border-radius: 8px; box-sizing: border-box; font-size: 16px;
+        }
+        
+        .fare-box { 
+            background: #f9f9f9; padding: 15px; border-radius: 10px; 
+            display: none; margin-bottom: 10px; border-left: 5px solid var(--primary);
+        }
+
+        .btn-group { display: flex; gap: 10px; }
+        button { 
+            flex: 1; padding: 15px; border: none; border-radius: 10px; 
+            font-weight: bold; cursor: pointer; font-size: 14px;
+        }
+        .btn-find { background: var(--dark); color: white; }
+        .btn-book { background: var(--primary); color: var(--dark); display: none; }
+        
+        #status { font-size: 12px; color: #666; margin-bottom: 5px; }
+        .captain-info { color: green; font-weight: bold; display: none; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <div class="controls">
-        <div id="status">Press the button to find your location</div>
-        <button id="shareBtn" onclick="getLocation()">📍 Get & Share My Location</button>
+<div class="controls">
+    <div id="status">Allow location access to start</div>
+    <input type="text" id="destination" placeholder="Enter Drop Location...">
+    
+    <div id="fare-box" class="fare-box">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span>🏍️ <b>Rapido Bike</b></span>
+            <span id="price" style="font-size: 20px; font-weight: 900;">₹0</span>
+        </div>
+        <small id="distance">Distance: 0 km</small>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <div class="btn-group">
+        <button class="btn-find" id="mainBtn" onclick="initLocation()">📍 Set Pickup</button>
+        <button class="btn-book" id="bookBtn" onclick="confirmBooking()">Confirm Booking</button>
+    </div>
+    <div id="cap-status" class="captain-info">🚖 Captain is arriving in 2 mins...</div>
+</div>
 
-    <script>
-        let map = L.map('map').setView([20, 0], 2); // Initial world view
-        let marker;
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+<script>
+    let map = L.map('map').setView([20, 0], 2);
+    let userMarker, captainMarker, routingControl;
+    let userCoords = null;
+    const FARE_PER_KM = 12;
 
-        function getLocation() {
-            const status = document.getElementById('status');
-            const btn = document.getElementById('shareBtn');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-            if (!navigator.geolocation) {
-                status.textContent = "Geolocation not supported";
-                return;
-            }
-
-            status.textContent = "Locating...";
-            btn.disabled = true;
-
-            navigator.geolocation.getCurrentPosition((position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                const accuracy = position.coords.accuracy;
-                
-                // Update Map
-                map.setView([lat, lon], 15);
-                if (marker) map.removeLayer(marker);
-                marker = L.marker([lat, lon]).addTo(map).bindPopup("You are here!").openPopup();
-
-                status.textContent = `Found (Accuracy: ${Math.round(accuracy)}m)`;
-                btn.disabled = false;
-                btn.textContent = "📲 Share This Location";
-                
-                // Change button function to Share
-                btn.onclick = () => shareLocation(lat, lon);
-
-            }, (error) => {
-                status.textContent = "Error: " + error.message;
-                btn.disabled = false;
-            }, { enableHighAccuracy: true });
-        }
-
-        async function shareLocation(lat, lon) {
-            const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+    function initLocation() {
+        if (!navigator.geolocation) return alert("Not supported");
+        
+        navigator.geolocation.getCurrentPosition(pos => {
+            userCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+            map.setView([userCoords.lat, userCoords.lon], 15);
             
-            if (navigator.share) {
-                try {
-                    await navigator.share({
-                        title: 'My Current Location',
-                        text: 'Here is where I am right now:',
-                        url: googleMapsUrl
-                    });
-                } catch (err) {
-                    console.log("Share cancelled or failed");
-                }
-            } else {
-                // Fallback for desktop: Copy to clipboard
-                navigator.clipboard.writeText(googleMapsUrl);
-                alert("Link copied to clipboard: " + googleMapsUrl);
+            if (userMarker) map.removeLayer(userMarker);
+            userMarker = L.marker([userCoords.lat, userCoords.lon]).addTo(map).bindPopup("Pickup Here").openPopup();
+            
+            document.getElementById('status').textContent = "Pickup Set! Enter destination.";
+            document.getElementById('mainBtn').textContent = "💰 Calculate Fare";
+            document.getElementById('mainBtn').onclick = calculateFare;
+        });
+    }
+
+    function calculateFare() {
+        const destInput = document.getElementById('destination').value;
+        if (!destInput) return alert("Please enter a destination");
+
+        // Simulating a destination (approx 3km away) for demo purposes
+        const destLat = userCoords.lat + 0.02;
+        const destLon = userCoords.lon + 0.02;
+
+        if (routingControl) map.removeControl(routingControl);
+
+        routingControl = L.Routing.control({
+            waypoints: [
+                L.latLng(userCoords.lat, userCoords.lon),
+                L.latLng(destLat, destLon)
+            ],
+            createMarker: () => null, // Hide default markers
+            lineOptions: { styles: [{ color: '#222', weight: 5 }] }
+        }).on('routesfound', function(e) {
+            const distKm = e.routes[0].summary.totalDistance / 1000;
+            const fare = Math.round(distKm * FARE_PER_KM) + 20; // Base fare 20
+            
+            document.getElementById('fare-box').style.display = 'block';
+            document.getElementById('price').textContent = `₹${fare}`;
+            document.getElementById('distance').textContent = `Distance: ${distKm.toFixed(1)} km`;
+            document.getElementById('bookBtn').style.display = 'block';
+        }).addTo(map);
+    }
+
+    function confirmBooking() {
+        document.getElementById('bookBtn').disabled = true;
+        document.getElementById('bookBtn').textContent = "Searching for Captain...";
+        
+        // Simulate "Finding a Captain" delay
+        setTimeout(() => {
+            document.getElementById('bookBtn').style.display = 'none';
+            document.getElementById('cap-status').style.display = 'block';
+            simulateCaptainArrival();
+        }, 2000);
+    }
+
+    function simulateCaptainArrival() {
+        // Start Captain 500 meters away
+        let capLat = userCoords.lat + 0.005;
+        let capLon = userCoords.lon + 0.005;
+
+        captainMarker = L.marker([capLat, capLon], {
+            icon: L.divIcon({ html: '🏍️', className: 'cap-icon', iconSize: [30, 30] })
+        }).addTo(map).bindPopup("Captain Suresh").openPopup();
+
+        // Animate the marker moving towards user (Real-time tracking simulation)
+        const interval = setInterval(() => {
+            capLat -= 0.0001;
+            capLon -= 0.0001;
+            captainMarker.setLatLng([capLat, capLon]);
+
+            // Check if arrived
+            const dist = map.distance([capLat, capLon], [userCoords.lat, userCoords.lon]);
+            if (dist < 20) {
+                clearInterval(interval);
+                document.getElementById('cap-status').textContent = "🚨 Captain has arrived!";
+                document.getElementById('cap-status').style.color = "blue";
             }
-        }
-    </script>
+        }, 500);
+    }
+</script>
+
 </body>
 </html>

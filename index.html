@@ -3,156 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rapido Clone MVP</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <title>Swiggy Clone | Full Experience</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary: #ffdd00; --dark: #222; --blue: #2563eb; }
-        body { font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        #map { flex-grow: 1; width: 100%; }
+        .filter-btn { border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 20px; font-size: 14px; transition: all 0.2s; background: white; white-space: nowrap; }
+        .filter-btn.active { background: #334155; color: white; border-color: #334155; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        .controls { 
-            padding: 20px; background: white; border-radius: 20px 20px 0 0; 
-            box-shadow: 0 -5px 15px rgba(0,0,0,0.1); position: relative; z-index: 1000;
+        /* Order Animation */
+        @keyframes bikeMove {
+            0% { transform: translateX(-100px); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(100px); opacity: 0; }
         }
-        
-        input { 
-            width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; 
-            border-radius: 8px; box-sizing: border-box; font-size: 16px;
-        }
-        
-        .fare-box { 
-            background: #f9f9f9; padding: 15px; border-radius: 10px; 
-            display: none; margin-bottom: 10px; border-left: 5px solid var(--primary);
-        }
-
-        .btn-group { display: flex; gap: 10px; }
-        button { 
-            flex: 1; padding: 15px; border: none; border-radius: 10px; 
-            font-weight: bold; cursor: pointer; font-size: 14px;
-        }
-        .btn-find { background: var(--dark); color: white; }
-        .btn-book { background: var(--primary); color: var(--dark); display: none; }
-        
-        #status { font-size: 12px; color: #666; margin-bottom: 5px; }
-        .captain-info { color: green; font-weight: bold; display: none; margin-top: 10px; }
+        .animate-bike { animation: bikeMove 2s linear infinite; }
     </style>
 </head>
-<body>
+<body class="bg-white font-sans text-gray-800">
 
-<div id="map"></div>
-
-<div class="controls">
-    <div id="status">Allow location access to start</div>
-    <input type="text" id="destination" placeholder="Enter Drop Location...">
-    
-    <div id="fare-box" class="fare-box">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span>🏍️ <b>Rapido Bike</b></span>
-            <span id="price" style="font-size: 20px; font-weight: 900;">₹0</span>
+    <nav class="sticky top-0 z-50 bg-white shadow-sm px-6 md:px-16 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-6 w-full md:w-auto">
+            <img src="https://upload.wikimedia.org/wikipedia/en/thumb/1/12/Swiggy_logo.svg/1200px-Swiggy_logo.svg.png" alt="Logo" class="h-8">
+            <div class="relative flex-grow md:w-80">
+                <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="Search for restaurants..." 
+                       class="w-full bg-gray-100 border-none rounded-lg py-2 pl-10 pr-4 focus:ring-2 focus:ring-orange-400 outline-none text-sm">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-sm"></i>
+            </div>
         </div>
-        <small id="distance">Distance: 0 km</small>
+        <div class="relative cursor-pointer hover:text-orange-500 font-bold" onclick="toggleCart()">
+            <i class="fa-solid fa-cart-shopping"></i>
+            <span id="cart-count" class="absolute -top-2 -right-3 bg-orange-500 text-white text-[10px] rounded-full px-1.5">0</span>
+            <span class="ml-2">Cart</span>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <section class="mb-10">
+            <h2 class="text-2xl font-bold mb-6">Top brands for you</h2>
+            <div class="flex space-x-8 overflow-x-auto pb-4 no-scrollbar text-center">
+                <div class="flex-shrink-0 cursor-pointer group">
+                    <img src="https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_288,h_360/v1674029845/PC_Creative%20refresh/3D_folders/food/Biryani.png" class="w-32 h-32 rounded-full group-hover:scale-105 transition">
+                    <p class="mt-2 font-medium">Biryani</p>
+                </div>
+                <div class="flex-shrink-0 cursor-pointer group">
+                    <img src="https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_288,h_360/v1674029856/PC_Creative%20refresh/3D_folders/food/Pizza.png" class="w-32 h-32 rounded-full group-hover:scale-105 transition">
+                    <p class="mt-2 font-medium">Pizza</p>
+                </div>
+                <div class="flex-shrink-0 cursor-pointer group">
+                    <img src="https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_288,h_360/v1674029848/PC_Creative%20refresh/3D_folders/food/Burger.png" class="w-32 h-32 rounded-full group-hover:scale-105 transition">
+                    <p class="mt-2 font-medium">Burgers</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="flex space-x-3 overflow-x-auto pb-6 no-scrollbar">
+            <button onclick="filterItems('all')" class="filter-btn active" id="btn-all">All</button>
+            <button onclick="filterItems('veg')" class="filter-btn" id="btn-veg">Pure Veg</button>
+            <button onclick="filterItems('fast')" class="filter-btn" id="btn-fast">Fast Delivery</button>
+        </div>
+
+        <h2 class="text-2xl font-bold mb-6" id="section-title">Restaurants near you</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-20" id="restaurant-grid"></div>
+    </main>
+
+    <footer class="bg-black text-white py-16 px-6 md:px-16">
+        <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-12">
+            <div>
+                <img src="https://upload.wikimedia.org/wikipedia/en/thumb/1/12/Swiggy_logo.svg/1200px-Swiggy_logo.svg.png" class="h-8 brightness-200 mb-6">
+                <p class="text-gray-400">© 2024 Bundl Technologies Pvt. Ltd</p>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4">Company</h4>
+                <ul class="text-gray-400 space-y-2"><li>About</li><li>Careers</li><li>Team</li><li>Swiggy One</li></ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4">Contact us</h4>
+                <ul class="text-gray-400 space-y-2"><li>Help & Support</li><li>Partner with us</li><li>Ride with us</li></ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4">Available in</h4>
+                <ul class="text-gray-400 space-y-2"><li>Bangalore</li><li>Gurgaon</li><li>Hyderabad</li><li>Mumbai</li></ul>
+            </div>
+        </div>
+    </footer>
+
+    <div id="cart-modal" class="fixed inset-0 bg-black/50 hidden z-[100] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-2xl relative">
+            <div id="cart-view">
+                <div class="flex justify-between items-center mb-4 border-b pb-4">
+                    <h2 class="text-xl font-bold">Your Order</h2>
+                    <button onclick="toggleCart()" class="text-2xl">&times;</button>
+                </div>
+                <div id="cart-list" class="space-y-4 mb-4"></div>
+                <div class="border-t pt-4">
+                    <div class="flex justify-between font-bold text-lg"><span>Total Bill</span><span id="total-price">₹0</span></div>
+                    <button onclick="placeOrder()" class="w-full bg-orange-500 text-white py-3 rounded-lg mt-6 font-bold uppercase">Place Order</button>
+                </div>
+            </div>
+            <div id="success-view" class="hidden text-center py-10">
+                <div class="text-6xl mb-4 animate-bike text-orange-500"><i class="fa-solid fa-motorcycle"></i></div>
+                <h2 class="text-2xl font-bold text-green-600">Order Placed!</h2>
+                <p class="text-gray-500 mt-2">Our delivery partner is on the way.</p>
+                <button onclick="toggleCart()" class="mt-6 text-orange-500 font-bold">Back to Menu</button>
+            </div>
+        </div>
     </div>
 
-    <div class="btn-group">
-        <button class="btn-find" id="mainBtn" onclick="initLocation()">📍 Set Pickup</button>
-        <button class="btn-book" id="bookBtn" onclick="confirmBooking()">Confirm Booking</button>
-    </div>
-    <div id="cap-status" class="captain-info">🚖 Captain is arriving in 2 mins...</div>
-</div>
+    <script>
+        const restaurants = [
+            { id: 1, name: "Pizza Hut", rating: 4.2, time: 25, type: "non-veg", price: 300, img: "https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_660/RX_THUMBNAIL/IMAGES/VENDOR/2024/7/16/5b9c53df-e0cb-48fc-a85a-7f1b60e7ca1a_750580.jpg" },
+            { id: 2, name: "Green Leaf", rating: 4.5, time: 20, type: "veg", price: 200, img: "https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_660/RX_THUMBNAIL/IMAGES/VENDOR/2024/4/17/f46f4065-2766-4d00-8800-4f5ef49a379f_31273.JPG" }
+        ];
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+        let cart = [];
 
-<script>
-    let map = L.map('map').setView([20, 0], 2);
-    let userMarker, captainMarker, routingControl;
-    let userCoords = null;
-    const FARE_PER_KM = 12;
+        function displayRestaurants(data) {
+            const grid = document.getElementById('restaurant-grid');
+            grid.innerHTML = data.map(res => `
+                <div class="group cursor-pointer">
+                    <div class="relative overflow-hidden rounded-2xl aspect-[4/3]">
+                        <img src="${res.img}" class="h-full w-full object-cover group-hover:scale-105 transition duration-500">
+                        <button onclick="addToCart('${res.name}', ${res.price})" class="absolute bottom-3 right-3 bg-white px-5 py-1.5 rounded-lg shadow-lg font-bold text-green-600">ADD</button>
+                    </div>
+                    <div class="mt-3">
+                        <h3 class="font-bold text-lg">${res.name}</h3>
+                        <p class="text-gray-600">★ ${res.rating} • ${res.time} mins</p>
+                    </div>
+                </div>
+            `).join('');
+        }
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        function addToCart(name, price) {
+            cart.push({ name, price });
+            document.getElementById('cart-count').innerText = cart.length;
+            updateCartModal();
+        }
 
-    function initLocation() {
-        if (!navigator.geolocation) return alert("Not supported");
-        
-        navigator.geolocation.getCurrentPosition(pos => {
-            userCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-            map.setView([userCoords.lat, userCoords.lon], 15);
-            
-            if (userMarker) map.removeLayer(userMarker);
-            userMarker = L.marker([userCoords.lat, userCoords.lon]).addTo(map).bindPopup("Pickup Here").openPopup();
-            
-            document.getElementById('status').textContent = "Pickup Set! Enter destination.";
-            document.getElementById('mainBtn').textContent = "💰 Calculate Fare";
-            document.getElementById('mainBtn').onclick = calculateFare;
-        });
-    }
+        function updateCartModal() {
+            const list = document.getElementById('cart-list');
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            list.innerHTML = cart.map(item => `<div class="flex justify-between"><span>${item.name}</span><span>₹${item.price}</span></div>`).join('');
+            document.getElementById('total-price').innerText = "₹" + total;
+        }
 
-    function calculateFare() {
-        const destInput = document.getElementById('destination').value;
-        if (!destInput) return alert("Please enter a destination");
+        function placeOrder() {
+            if(cart.length === 0) return alert("Cart is empty!");
+            document.getElementById('cart-view').classList.add('hidden');
+            document.getElementById('success-view').classList.remove('hidden');
+            cart = [];
+            document.getElementById('cart-count').innerText = "0";
+        }
 
-        // Simulating a destination (approx 3km away) for demo purposes
-        const destLat = userCoords.lat + 0.02;
-        const destLon = userCoords.lon + 0.02;
+        function toggleCart() {
+            const modal = document.getElementById('cart-modal');
+            modal.classList.toggle('hidden');
+            document.getElementById('cart-view').classList.remove('hidden');
+            document.getElementById('success-view').classList.add('hidden');
+        }
 
-        if (routingControl) map.removeControl(routingControl);
-
-        routingControl = L.Routing.control({
-            waypoints: [
-                L.latLng(userCoords.lat, userCoords.lon),
-                L.latLng(destLat, destLon)
-            ],
-            createMarker: () => null, // Hide default markers
-            lineOptions: { styles: [{ color: '#222', weight: 5 }] }
-        }).on('routesfound', function(e) {
-            const distKm = e.routes[0].summary.totalDistance / 1000;
-            const fare = Math.round(distKm * FARE_PER_KM) + 20; // Base fare 20
-            
-            document.getElementById('fare-box').style.display = 'block';
-            document.getElementById('price').textContent = `₹${fare}`;
-            document.getElementById('distance').textContent = `Distance: ${distKm.toFixed(1)} km`;
-            document.getElementById('bookBtn').style.display = 'block';
-        }).addTo(map);
-    }
-
-    function confirmBooking() {
-        document.getElementById('bookBtn').disabled = true;
-        document.getElementById('bookBtn').textContent = "Searching for Captain...";
-        
-        // Simulate "Finding a Captain" delay
-        setTimeout(() => {
-            document.getElementById('bookBtn').style.display = 'none';
-            document.getElementById('cap-status').style.display = 'block';
-            simulateCaptainArrival();
-        }, 2000);
-    }
-
-    function simulateCaptainArrival() {
-        // Start Captain 500 meters away
-        let capLat = userCoords.lat + 0.005;
-        let capLon = userCoords.lon + 0.005;
-
-        captainMarker = L.marker([capLat, capLon], {
-            icon: L.divIcon({ html: '🏍️', className: 'cap-icon', iconSize: [30, 30] })
-        }).addTo(map).bindPopup("Captain Suresh").openPopup();
-
-        // Animate the marker moving towards user (Real-time tracking simulation)
-        const interval = setInterval(() => {
-            capLat -= 0.0001;
-            capLon -= 0.0001;
-            captainMarker.setLatLng([capLat, capLon]);
-
-            // Check if arrived
-            const dist = map.distance([capLat, capLon], [userCoords.lat, userCoords.lon]);
-            if (dist < 20) {
-                clearInterval(interval);
-                document.getElementById('cap-status').textContent = "🚨 Captain has arrived!";
-                document.getElementById('cap-status').style.color = "blue";
-            }
-        }, 500);
-    }
-</script>
-
+        displayRestaurants(restaurants);
+    </script>
 </body>
 </html>

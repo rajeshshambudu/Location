@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share My Location</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { font-family: -apple-system, system-ui, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: #f4f4f9; }
+        #map { flex-grow: 1; width: 100%; }
+        .controls { padding: 20px; background: white; border-radius: 20px 20px 0 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); text-align: center; }
+        button { 
+            background: #2563eb; color: white; border: none; padding: 15px 30px; 
+            font-size: 16px; font-weight: bold; border-radius: 12px; cursor: pointer; width: 100%;
+        }
+        button:disabled { background: #ccc; }
+        #status { margin-bottom: 10px; font-size: 14px; color: #666; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div class="controls">
+        <div id="status">Press the button to find your location</div>
+        <button id="shareBtn" onclick="getLocation()">📍 Get & Share My Location</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        let map = L.map('map').setView([20, 0], 2); // Initial world view
+        let marker;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        function getLocation() {
+            const status = document.getElementById('status');
+            const btn = document.getElementById('shareBtn');
+
+            if (!navigator.geolocation) {
+                status.textContent = "Geolocation not supported";
+                return;
+            }
+
+            status.textContent = "Locating...";
+            btn.disabled = true;
+
+            navigator.geolocation.getCurrentPosition((position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
+                
+                // Update Map
+                map.setView([lat, lon], 15);
+                if (marker) map.removeLayer(marker);
+                marker = L.marker([lat, lon]).addTo(map).bindPopup("You are here!").openPopup();
+
+                status.textContent = `Found (Accuracy: ${Math.round(accuracy)}m)`;
+                btn.disabled = false;
+                btn.textContent = "📲 Share This Location";
+                
+                // Change button function to Share
+                btn.onclick = () => shareLocation(lat, lon);
+
+            }, (error) => {
+                status.textContent = "Error: " + error.message;
+                btn.disabled = false;
+            }, { enableHighAccuracy: true });
+        }
+
+        async function shareLocation(lat, lon) {
+            const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+            
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'My Current Location',
+                        text: 'Here is where I am right now:',
+                        url: googleMapsUrl
+                    });
+                } catch (err) {
+                    console.log("Share cancelled or failed");
+                }
+            } else {
+                // Fallback for desktop: Copy to clipboard
+                navigator.clipboard.writeText(googleMapsUrl);
+                alert("Link copied to clipboard: " + googleMapsUrl);
+            }
+        }
+    </script>
+</body>
+</html>

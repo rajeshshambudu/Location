@@ -1,83 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Dashboard</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="auth.js"></script>
-<script src="data.js"></script>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-gray-100 p-6">
-<script>protect()</script>
+
+<script>
+if (localStorage.getItem("admin") !== "true") {
+  window.location.href = "admin.html";
+}
+</script>
 
 <h1 class="text-2xl font-bold mb-4">Admin Dashboard</h1>
 
-<!-- ADD RESTAURANT -->
 <div class="bg-white p-4 rounded shadow max-w-md">
-  <input id="name" class="border p-2 w-full mb-2" placeholder="Restaurant Name">
-  <input id="price" type="number" class="border p-2 w-full mb-2" placeholder="Price">
-  <textarea id="images" class="border p-2 w-full mb-2"
-    placeholder="Paste image URLs (one per line)"></textarea>
+  <input id="name" placeholder="Restaurant Name"
+         class="border p-2 w-full mb-2">
 
-  <div id="preview" class="grid grid-cols-3 gap-2 mb-2"></div>
+  <input id="price" type="number" placeholder="Price"
+         class="border p-2 w-full mb-2">
 
-  <button onclick="add()" class="bg-green-600 text-white w-full py-2">
+  <input id="img" placeholder="Image URL / Google Drive Link"
+         class="border p-2 w-full mb-2">
+
+  <img id="preview" class="h-32 w-full object-cover rounded mb-2 hidden">
+
+  <button onclick="addRestaurant()"
+          class="bg-green-600 text-white w-full py-2 rounded">
     Add Restaurant
   </button>
 </div>
 
-<!-- CHANGE PASSWORD -->
-<div class="bg-white p-4 rounded shadow max-w-md mt-6">
-  <input id="newpass" type="password" class="border p-2 w-full mb-2"
-    placeholder="New Admin Password">
-  <button onclick="changePassword(newpass.value)"
-    class="bg-orange-500 text-white w-full py-2">
-    Change Password
-  </button>
-</div>
-
-<h2 class="font-bold mt-8 mb-2">Restaurants</h2>
+<h2 class="font-bold mt-6 mb-2">Saved Restaurants</h2>
 <div id="list"></div>
 
 <script>
-let data = getData();
+let data = JSON.parse(localStorage.getItem("restaurants")) || [];
 
-images.addEventListener("input", () => {
-  preview.innerHTML = images.value
-    .split("\n")
-    .map(u => `<img src="${convertDriveLink(u)}"
-      onerror="this.src='https://via.placeholder.com/150'"
-      class="h-20 object-cover rounded">`)
-    .join("");
+function convertDrive(url) {
+  if (url.includes("drive.google.com/file/d/")) {
+    let id = url.split("/d/")[1].split("/")[0];
+    return `https://drive.google.com/uc?export=view&id=${id}`;
+  }
+  return url;
+}
+
+img.addEventListener("input", () => {
+  preview.src = convertDrive(img.value);
+  preview.classList.remove("hidden");
 });
 
-function add(){
+function addRestaurant() {
   data.push({
     name: name.value,
     price: Number(price.value),
-    images: images.value.split("\n").map(convertDriveLink)
+    img: convertDrive(img.value)
   });
-  saveData(data);
-  name.value = price.value = images.value = "";
-  preview.innerHTML="";
+
+  localStorage.setItem("restaurants", JSON.stringify(data));
+  name.value = price.value = img.value = "";
+  preview.classList.add("hidden");
   render();
 }
 
-function del(i){
-  data.splice(i,1);
-  saveData(data);
+function removeItem(i) {
+  data.splice(i, 1);
+  localStorage.setItem("restaurants", JSON.stringify(data));
   render();
 }
 
-function render(){
-  list.innerHTML = data.map((r,i)=>`
-    <div class="bg-white p-3 rounded shadow mb-2 flex justify-between">
-      <span>${r.name} (₹${r.price})</span>
-      <button onclick="del(${i})" class="text-red-500">Delete</button>
+function render() {
+  list.innerHTML = data.map((r, i) => `
+    <div class="bg-white p-2 rounded shadow mb-2 flex justify-between">
+      <span>${r.name} – ₹${r.price}</span>
+      <button onclick="removeItem(${i})"
+              class="text-red-500">Delete</button>
     </div>
   `).join("");
 }
+
 render();
 </script>
+
 </body>
 </html>
